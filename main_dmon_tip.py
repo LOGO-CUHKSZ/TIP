@@ -5,20 +5,18 @@ from torch import tensor
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import os
 import json
-from mincut.train import train, evaluate, train_regression, evaluate_regression
-from mincut.mincutpool import MincutPool
-from mincut.params import get_params
+from dmon.train import train, evaluate, train_regression, evaluate_regression
+from dmon.dmon_pool import DMONPool
 from utils import set_seed
 from data.datasets import get_data
 import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser(description='MincutPool - PyTorch Geometric')
+parser = argparse.ArgumentParser(description='DMONPool - PyTorch Geometric')
 parser.add_argument('--seed', type=int, default=123)
-parser.add_argument('--logdir', type=str, default='results/mincut', help='Log directory.')
-parser.add_argument('--dataset', type=str, default='NCI1',
-                    choices=['SMNIST', 'ZINC', 'PROTEINS', 'NCI109', 'NCI1', 'IMDB-BINARY', 'IMDB-MULTI', 'DD', 'ogbg-molhiv', 'ENZYMES'])
+parser.add_argument('--logdir', type=str, default='results/graclus', help='Log directory.')
+parser.add_argument('--dataset', type=str, default='NCI1')
 parser.add_argument('--cleaned', action='store_true', default=False, help='Used to eliminate isomorphisms in IMDB')
 parser.add_argument('--save', action='store_true', default=False)
 parser.add_argument('--lr', type=float, default=0.001, help='Learning rate.')
@@ -27,17 +25,15 @@ parser.add_argument('--max_epochs', type=int, default=1000, help='Maximum number
 parser.add_argument('--interval', type=int, default=1, help='Interval for printing train statistics.')
 parser.add_argument('--early_stop_patience', type=int, default=50)
 parser.add_argument('--lr_decay_patience', type=int, default=10)
-
-# model
 parser.add_argument('--pooling_type', type=str, choices=['mlp', 'random'], default='mlp')
 parser.add_argument('--num_layers', type=int, default=3)
 parser.add_argument('--hidden_dim', type=int, default=32)
-
+parser.add_argument('--device', default='cuda:0')
+# args = parser.parse_args()
 args, unknown = parser.parse_known_args()
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 set_seed(args.seed)
-
 
 args.logdir = f'{args.logdir}/{args.dataset}/{args.pooling_type}/' \
               f'{args.num_layers}_layers/{args.hidden_dim}_dim'
@@ -54,7 +50,7 @@ with open(f'{args.logdir}/summary.json', 'w') as f:
 train_loader, val_loader, test_loader, stats, evaluator, encode_edge = get_data(args.dataset, args.batch_size,
                                                                                 rwr=False, cleaned=args.cleaned)
 
-model = MincutPool(num_features=stats['num_features'], num_classes=stats['num_classes'],
+model = DMONPool(num_features=stats['num_features'], num_classes=stats['num_classes'],
                    max_num_nodes=stats['max_num_nodes'], hidden=args.hidden_dim,
                    pooling_type=args.pooling_type, num_layers=args.num_layers, encode_edge=encode_edge).to(device)
 
@@ -85,7 +81,7 @@ for epoch in range(1, args.max_epochs + 1):
     # test
     test_acc, test_sup_loss, test_lp_loss, test_entropy_loss, save_data = \
         evaluate(model, test_loader, device, evaluator=evaluator, vis=True)
-
+        
 
     val_accuracies.append(val_acc)
     test_accuracies.append(test_acc)
@@ -118,7 +114,7 @@ for epoch in range(1, args.max_epochs + 1):
     if epochs_no_improve >= args.early_stop_patience:
         print('Early stopping!')
         break
-    
+
 
 if args.save:
     torch.save(best_model, f'{args.logdir}/models/mincut_{args.seed}.model')

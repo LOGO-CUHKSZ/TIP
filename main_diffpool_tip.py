@@ -17,7 +17,7 @@ import numpy as np
 parser = argparse.ArgumentParser(description='DiffPool - PyTorch Geometric.')
 parser.add_argument('--seed', type=int, default=123, help='Random seed.')
 parser.add_argument('--logdir', type=str, default='results/diffpool', help='Log directory')
-parser.add_argument('--dataset', type=str, default='ENZYMES')
+parser.add_argument('--dataset', type=str, default='NCI1')
 parser.add_argument('--reproduce', action='store_true', default=False)
 parser.add_argument('--cleaned', action='store_true', default=False, help='Used to eliminate isomorphisms in IMDB')
 parser.add_argument('--save', action='store_true', default=False)
@@ -29,16 +29,15 @@ parser.add_argument('--early_stop_patience', type=int, default=50)
 parser.add_argument('--lr_decay_patience', type=int, default=10)
 parser.add_argument('--use_feature', action='store_true', default=True)
 parser.add_argument('--wandb', action='store_true', default=False)
-# model
-
 parser.add_argument('--pooling_type', type=str, default='gnn')
 parser.add_argument('--gnn_dim', type=int, default=32)
 parser.add_argument('--mlp_hidden_dim', type=int, default=50)
 parser.add_argument('--num_pooling_layers', type=int, default=2)
+parser.add_argument('--device', default='cuda:0')
 # args = parser.parse_args()
 args, unknown = parser.parse_known_args()
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 set_seed(args.seed)
 
 from diffpool.diffpool import DiffPool
